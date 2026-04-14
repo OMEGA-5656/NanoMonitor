@@ -8,8 +8,7 @@ Right now this version is focused on Windows only, to keep the code simple and e
 ## What this project does
 
 - Shows CPU usage and RAM usage
-- Updates stats automatically every second
-- Lets you refresh manually with one button
+- Updates stats automatically every 1000ms
 - Reads real system data from Windows APIs using C++
 
 ## How it works in simple steps
@@ -55,6 +54,11 @@ $env:JAVA_HOME = "C:\Program Files\Java\jdk-25.0.2"
 $env:Path = "$env:JAVA_HOME\bin;C:\msys64\ucrt64\bin;$env:Path"
 ```
 
+```cmd prompt
+set JAVA_HOME = "C:\Program Files\Java\jdk-25.0.2"
+set Path = "$env:JAVA_HOME\bin;C:\msys64\ucrt64\bin;$env:Path"
+```
+
 ## Why this project is useful
 
 - Good for understanding Java to native integration
@@ -65,10 +69,5 @@ $env:Path = "$env:JAVA_HOME\bin;C:\msys64\ucrt64\bin;$env:Path"
 
 - Lightweight desktop widget for quick health check
 - Learning base for bigger monitor app with graphs later
-- Resume project to show Java, C++, and OS API knowledge
 - Starter architecture for diagnostics tools in embedded or automotive style software
-
-## Notes
-
-This app is not using any virtual environment.
-It runs as a normal Java process and loads native DLL at runtime.
+- Can be used in load balancing applications
