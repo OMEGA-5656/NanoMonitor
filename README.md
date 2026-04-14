@@ -56,8 +56,8 @@ $env:Path = "$env:JAVA_HOME\bin;C:\msys64\ucrt64\bin;$env:Path"
 
 OR Command Prompt:
 ```cmd prompt
-set JAVA_HOME = "C:\Program Files\Java\jdk-25.0.2"
-set Path = "$env:JAVA_HOME\bin;C:\msys64\ucrt64\bin;$env:Path"
+set "JAVA_HOME=C:\Program Files\Java\jdk-25.0.2"
+set "PATH=%JAVA_HOME%\bin;C:\msys64\ucrt64\bin;%PATH%"
 ```
 
 ## Why this project is useful
