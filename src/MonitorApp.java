@@ -2,64 +2,41 @@ import javax.swing.*;
 import java.awt.*;
 
 public class MonitorApp extends JFrame {
-    private final JLabel cpuLabel;
-    private final JLabel ramLabel;
-    private final JLabel statusLabel;
+    private final JButton button = new JButton("Click to Load Stats...");
+    private final Timer autoRefreshTimer;
 
-    static {
-        System.loadLibrary("stats_bridge");
-    }
-
+    static { System.loadLibrary("stats_bridge"); }
     public native String getStats();
 
     public MonitorApp() {
-        setTitle("NanoMonitor");
-        setSize(360, 180);
+        setTitle("Mini Monitor");
+        setSize(420, 180);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);
-        setLayout(new GridLayout(4, 1, 8, 8));
+        setLayout(new GridLayout(1, 1));
 
-        cpuLabel = new JLabel("CPU: --%", SwingConstants.CENTER);
-        ramLabel = new JLabel("RAM: -- / -- GB", SwingConstants.CENTER);
-        statusLabel = new JLabel("Status: Ready", SwingConstants.CENTER);
-        JButton refreshButton = new JButton("Refresh");
+        button.addActionListener(e -> refreshStats());
 
-        refreshButton.addActionListener(e -> refreshStats());
+        add(button);
 
-        add(cpuLabel);
-        add(ramLabel);
-        add(refreshButton);
-        add(statusLabel);
+        // Refresh every second to keep values up-to-date.
+        autoRefreshTimer = new Timer(1000, e -> refreshStats());
+        autoRefreshTimer.start();
+
+        setVisible(true);
+        refreshStats();
     }
 
     private void refreshStats() {
         try {
-            String result = getStats();
-            if (result.startsWith("Error:")) {
-                statusLabel.setText("Status: " + result);
-                return;
-            }
-
-            String[] parts = result.split("\\|", 2);
-            if (parts.length == 2) {
-                cpuLabel.setText(parts[0].trim());
-                ramLabel.setText(parts[1].trim());
-                statusLabel.setText("Status: Updated");
-            } else {
-                statusLabel.setText("Status: Error: bad response");
-            }
+            button.setText(getStats());
         } catch (UnsatisfiedLinkError ex) {
-            statusLabel.setText("Status: Error: native library not loaded");
+            button.setText("Error: native library not loaded");
         } catch (Exception ex) {
-            statusLabel.setText("Status: Error: " + ex.getMessage());
+            button.setText("Error: " + ex.getMessage());
         }
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            MonitorApp app = new MonitorApp();
-            app.setVisible(true);
-            app.refreshStats();
-        });
+        SwingUtilities.invokeLater(MonitorApp::new);
     }
 }

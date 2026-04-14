@@ -2,90 +2,45 @@
 #include <windows.h>
 #include <cstdio>
 
-namespace {
-ULONGLONG fileTimeToUInt64(const FILETIME& ft) {
-    ULARGE_INTEGER value;
-    value.LowPart = ft.dwLowDateTime;
-    value.HighPart = ft.dwHighDateTime;
-    return value.QuadPart;
+// Tiny helper to convert Windows time formats to simple numbers
+unsigned long long ft2ull(FILETIME f) {
+    return ((unsigned long long)f.dwHighDateTime << 32) | f.dwLowDateTime;
 }
 
-double readCpuPercent() {
+extern "C" JNIEXPORT jstring JNICALL Java_MonitorApp_getStats(JNIEnv* env, jobject obj) {
+    // 1. Calculate CPU
+    static unsigned long long prevIdle = 0, prevKernel = 0, prevUser = 0;
     static bool hasPrevious = false;
-    static ULONGLONG prevIdle = 0;
-    static ULONGLONG prevKernel = 0;
-    static ULONGLONG prevUser = 0;
-
-    FILETIME idleTime;
-    FILETIME kernelTime;
-    FILETIME userTime;
-    if (!GetSystemTimes(&idleTime, &kernelTime, &userTime)) {
-        return -1.0;
-    }
-
-    ULONGLONG idle = fileTimeToUInt64(idleTime);
-    ULONGLONG kernel = fileTimeToUInt64(kernelTime);
-    ULONGLONG user = fileTimeToUInt64(userTime);
-
-    if (!hasPrevious) {
-        hasPrevious = true;
-        prevIdle = idle;
-        prevKernel = kernel;
-        prevUser = user;
-        return 0.0;
-    }
-
-    ULONGLONG idleDelta = idle - prevIdle;
-    ULONGLONG kernelDelta = kernel - prevKernel;
-    ULONGLONG userDelta = user - prevUser;
-    ULONGLONG totalDelta = kernelDelta + userDelta;
-
-    prevIdle = idle;
-    prevKernel = kernel;
-    prevUser = user;
-
-    if (totalDelta == 0) {
-        return 0.0;
-    }
-
-    double usage = 100.0 * (1.0 - static_cast<double>(idleDelta) / static_cast<double>(totalDelta));
-    if (usage < 0.0) {
-        usage = 0.0;
-    }
-    if (usage > 100.0) {
-        usage = 100.0;
-    }
-    return usage;
-}
-
-bool readMemory(double& usedGb, double& totalGb) {
-    MEMORYSTATUSEX memoryStatus;
-    memoryStatus.dwLength = sizeof(memoryStatus);
-    if (!GlobalMemoryStatusEx(&memoryStatus)) {
-        return false;
-    }
-
-    const double bytesToGb = 1024.0 * 1024.0 * 1024.0;
-    totalGb = static_cast<double>(memoryStatus.ullTotalPhys) / bytesToGb;
-    double freeGb = static_cast<double>(memoryStatus.ullAvailPhys) / bytesToGb;
-    usedGb = totalGb - freeGb;
-    return true;
-}
-}
-
-extern "C" JNIEXPORT jstring JNICALL Java_MonitorApp_getStats(JNIEnv* env, jobject /*obj*/) {
-    double cpuPercent = readCpuPercent();
-    if (cpuPercent < 0.0) {
+    FILETIME idle, kernel, user;
+    if (!GetSystemTimes(&idle, &kernel, &user)) {
         return env->NewStringUTF("Error: unable to read CPU");
     }
 
-    double usedGb = 0.0;
-    double totalGb = 0.0;
-    if (!readMemory(usedGb, totalGb)) {
+    unsigned long long cIdle = ft2ull(idle), cKernel = ft2ull(kernel), cUser = ft2ull(user);
+    
+    double cpu = 0.0;
+    if (hasPrevious) {
+        double total = (cKernel - prevKernel) + (cUser - prevUser);
+        if (total != 0.0) {
+            cpu = 100.0 * (1.0 - (double)(cIdle - prevIdle) / total);
+        }
+    }
+    
+    prevIdle = cIdle; prevKernel = cKernel; prevUser = cUser;
+    hasPrevious = true;
+
+    // 2. Calculate RAM
+    MEMORYSTATUSEX mem;
+    mem.dwLength = sizeof(mem);
+    if (!GlobalMemoryStatusEx(&mem)) {
         return env->NewStringUTF("Error: unable to read RAM");
     }
+    
+    double totalGb = mem.ullTotalPhys / 1073741824.0;
+    double usedGb = totalGb - (mem.ullAvailPhys / 1073741824.0);
 
-    char buffer[128];
-    std::snprintf(buffer, sizeof(buffer), "CPU: %.1f%% | RAM: %.1f / %.1f GB", cpuPercent, usedGb, totalGb);
+    // 3. Return String
+    char buffer[100];
+    std::snprintf(buffer, sizeof(buffer), "CPU: %.0f%% | RAM: %.1f/%.1f GB", cpu, usedGb, totalGb);
     return env->NewStringUTF(buffer);
 }

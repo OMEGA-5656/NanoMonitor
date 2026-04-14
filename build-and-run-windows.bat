@@ -14,7 +14,7 @@ if not exist build\native mkdir build\native
 javac -h native -d build\classes src\MonitorApp.java
 if errorlevel 1 exit /b 1
 
-g++ -shared -static -O2 -I"%JAVA_HOME%\include" -I"%JAVA_HOME%\include\win32" native\MonitorApp.cpp -o build\native\stats_bridge.dll
+g++ -shared -O2 -I"%JAVA_HOME%\include" -I"%JAVA_HOME%\include\win32" native\MonitorApp.cpp -o build\native\stats_bridge.dll
 if errorlevel 1 exit /b 1
 
 java -Djava.library.path=build\native -cp build\classes MonitorApp
